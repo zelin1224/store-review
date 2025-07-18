@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>店長考核表</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .section { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 8px; }
+    .title { font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+    .check-item { cursor: pointer; margin: 5px 0; }
+    .stars { font-size: 20px; margin: 10px 0; }
+    textarea { width: 100%; margin-top: 10px; }
+    input[type=range] { width: 100%; }
+    button { padding: 10px 20px; font-size: 16px; }
+    #status { margin-top: 20px; color: green; }
+  </style>
+</head>
+<body>
+  <h1>匿名店長考核表</h1>
+  <div id="formContainer"></div>
+  <button onclick="submitForm()">送出評分表</button>
+  <p id="status"></p>
+
+  <script>
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbx-Bbm-5JAbWRMk9pn6mW_uSxKOKXqmlLIngs4pk3rwDPfGoSiOnXvUv1x3TCofXKUz4g/exec";
+    const sections = {
+      A: { title: "A 團隊溝通（Communication）", items: ["店長能清楚傳達營運指令","能有效的雙向溝通","確保同仁們都能「聽得懂、聽得進」"] },
+      B: { title: "B 相處氛圍（Team Chemistry）", items: ["日常工作氣氛是否愉快","員工彼此互動給予良性支持","店內問題處理客觀中立無明顯對立或邊緣現象","協助新進人員快速融入團隊生活"] },
+      C: { title: "C 團隊向心力與凝聚力（Cohesion）", items: ["店長是否能讓團隊對目標有共同認知","團隊是否能朝共同目標努力","有無適度調配人員主動支援他人"] },
+      D: { title: "D 員工成長與被重視感（Empowerment & Value）", items: ["給予員工學習新技能機會","店長對於下達指令能以身作則","同仁遇到問題能給予同理心協助","協助安排同仁輪崗學習制度"] },
+      E: { title: "E 壓力與情緒管理（Emotional Climate）", items: ["店長能在高壓或突發情境下穩定情緒","能提出解決方案，而非純屬問題轉述"] }
+    };
+
+    function buildForm() {
+      const container = document.getElementById("formContainer");
+      for (let key in sections) {
+        const s = sections[key];
+        const sec = document.createElement("div");
+        sec.className = "section";
+        sec.innerHTML = `<div class="title">${s.title}</div>`;
+        s.items.forEach(text => {
+          const div = document.createElement("div");
+          div.className = "check-item";
+          div.innerHTML = `<span data-status="0" onclick="toggleStatus(this)">⬜</span> ${text}`;
+          sec.appendChild(div);
+        });
+        sec.innerHTML += `
+          <div>評分（1-4 星）：<input type="range" min="1" max="4" value="1" onchange="updateStars(this)">
+            <span class="stars">1 ⭐</span>
+          </div>
+          <textarea placeholder="備註..."></textarea>`;
+        container.appendChild(sec);
+      }
+
+      const fsec = document.createElement("div");
+      fsec.className = "section";
+      fsec.innerHTML = `<div class="title">F 對店裡任何的想法建議，如何做會更有趣好玩！</div>
+        <textarea id="fSuggestion" rows="4" placeholder="請輸入您的建議或想法..."></textarea>`;
+      container.appendChild(fsec);
+    }
+
+    function toggleStatus(el) {
+      const s = (+el.getAttribute("data-status") + 1) % 3;
+      el.setAttribute("data-status", s);
+      el.textContent = s==0?"⬜":s==1?"✅":"❌";
+    }
+
+    function updateStars(el) {
+      el.nextElementSibling.textContent = el.value + " ⭐";
+    }
+
+    function submitForm() {
+      const results = [];
+      document.querySelectorAll(".section").forEach(sec => {
+        const title = sec.querySelector(".title").textContent;
+        const checks = [...sec.querySelectorAll("span[data-status]")].map(e => e.getAttribute("data-status"));
+        const starInput = sec.querySelector("input[type=range]");
+        const stars = starInput ? starInput.value : "";
+        const remark = sec.querySelector("textarea")?.value || "";
+        if (title.startsWith("F ")) {
+          results.push({ title, suggestion: remark });
+        } else {
+          results.push({ title, checks, stars, remark });
+        }
+      });
+
+      fetch(scriptUrl, {
+        method: "POST",
+        body: JSON.stringify(results),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => {
+        document.getElementById("status").textContent = "✅ 資料已送出！";
+      })
+      .catch(err => {
+        document.getElementById("status").textContent = "❌ 發送失敗：" + err;
+      });
+    }
+
+    buildForm();
+  </script>
+</body>
+</html>
